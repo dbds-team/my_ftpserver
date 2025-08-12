@@ -3,63 +3,106 @@ project_name: my_ftpserver
 before:
   hooks:
     - go mod tidy
+    - go mod download
 
 builds:
-  - env:
+  - id: my_ftpserver
+    env:
       - CGO_ENABLED=0
       - GO111MODULE=on
+    main: ./
+    binary: my_ftpserver
     goos:
       - linux
       - darwin
       - windows
       - freebsd
+      - openbsd
+      - netbsd
     goarch:
       - amd64
+      - 386
       - arm
       - arm64
-      - 386
     goarm:
       - "6"
       - "7"
     ignore:
+      # Darwin (macOS) 不支持 386 和 arm (32-bit)
       - goos: darwin
         goarch: 386
       - goos: darwin
         goarch: arm
+      # Windows ARM 32-bit 不常见
       - goos: windows
         goarch: arm
-      - goos: windows
-        goarch: arm64
+      # BSD系统 ARM 32-bit 支持有限
       - goos: freebsd
         goarch: arm
+      - goos: openbsd
+        goarch: arm
+      - goos: netbsd
+        goarch: arm
     ldflags:
-      - -s -w -X main.BuildVersion={{.Version}} -X main.Commit={{.Commit}} -X main.BuildDate={{.Date}}
+      - -s -w 
+      - -X main.BuildVersion={{.Version}} 
+      - -X main.Commit={{.Commit}} 
+      - -X main.BuildDate={{.Date}}
+      - -extldflags=-static
 
 archives:
   - id: default
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else if eq .Arch "arm" }}arm
+      {{- else if eq .Arch "arm64" }}aarch64
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
     format_overrides:
       - goos: windows
         format: zip
     files:
       - LICENSE*
       - README*
+      - CHANGELOG*
 
 checksum:
   name_template: 'checksums.txt'
+  algorithm: sha256
 
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
 changelog:
   sort: asc
+  use: github
   filters:
     exclude:
       - '^docs:'
       - '^test:'
       - '^chore:'
+      - '^ci:'
       - Merge pull request
       - Merge branch
+  groups:
+    - title: 'Features'
+      regexp: "^.*feat[(\\w)]*:+.*$"
+      order: 0
+    - title: 'Bug fixes'
+      regexp: "^.*fix[(\\w)]*:+.*$"
+      order: 1
+    - title: 'Performance'
+      regexp: "^.*perf[(\\w)]*:+.*$"
+      order: 2
+    - title: 'Refactors'
+      regexp: "^.*refactor[(\\w)]*:+.*$"
+      order: 3
+    - title: Others
+      order: 999
 
 release:
   github:
@@ -67,15 +110,35 @@ release:
     name: my_ftpserver
   draft: false
   prerelease: auto
+  mode: append
   name_template: "{{.ProjectName}} v{{.Version}}"
   header: |
-    ## Release {{ .Version }} ({{ .Date }})
+    ## 🚀 Release {{ .Version }} ({{ .Date }})
     
-    ### Downloads
+    ### 📦 Downloads
+    
+    Choose the appropriate binary for your platform:
+    
+    #### Supported Platforms:
+    - **Windows**: x86_64 (64-bit), i386 (32-bit), ARM64
+    - **Linux**: x86_64 (64-bit), i386 (32-bit), ARM, ARM64
+    - **macOS**: x86_64 (Intel), ARM64 (Apple Silicon M1/M2/M3/M4)
+    - **FreeBSD**: x86_64 (64-bit), i386 (32-bit), ARM64
+    - **OpenBSD**: x86_64 (64-bit), i386 (32-bit), ARM64
+    - **NetBSD**: x86_64 (64-bit), i386 (32-bit), ARM64
     
   footer: |
-    ## Docker Images
+    ---
+    
+    ### 📝 Checksums
+    Please verify the SHA256 checksums after downloading.
+    
+    ### 🐳 Docker Images
     
     ```bash
     docker pull ghcr.io/dbds-team/my_ftpserver:{{ .Version }}
+    docker pull ghcr.io/dbds-team/my_ftpserver:latest
     ```
+    
+    ### 📄 Full Changelog
+    **Full Changelog**: https://github.com/dbds-team/my_ftpserver/compare/{{ .PreviousTag }}...{{ .Tag }}

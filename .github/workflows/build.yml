@@ -1,48 +1,93 @@
-name: Build
+name: Build and Test
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
 on:
   push:
+    branches: 
+      - main
+      - master
+      - develop
   pull_request:
+    branches:
+      - main
+      - master
+      - develop
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-24.04
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+  test:
+    name: Test on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        go: ['1.21', '1.22']
+    
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE
-      - uses: actions/checkout@v4.3.0
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # Running golangci-lint
-      - name: Linting
-        if: matrix.lint
-        uses: golangci/golangci-lint-action@v8
+      - name: Setup Go
+        uses: actions/setup-go@v5
         with:
-          version: v1.41
+          go-version: ${{ matrix.go }}
+          cache: true
 
-      # Install Go
-      - name: Setup go
-        uses: actions/setup-go@v5.5.0
-        with:
-          go-version: 1.24.6
+      - name: Install dependencies
+        run: go mod download
 
-      - name: Build
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
+      - name: Build binary
         run: go build -v ./...
 
-      - name: Build for FreeBSD
-        run: |
-          GOOS=freebsd GOARCH=amd64 go build -v ./...
-          GOOS=freebsd GOARCH=arm64 go build -v ./...
+  cross-compile:
+    name: Cross Compile Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Test
-        # We need GCC because of the "go test -race"
-        # env:
-        #   CGO_ENABLED: 0
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Install dependencies
+        run: go mod download
+
+      - name: Test cross compilation
         run: |
-          apt-get update && apt-get install gcc -y
-          go test -race -v ./...
+          # Test compilation for different platforms
+          echo "Testing cross-compilation for multiple platforms..."
+          
+          # Windows
+          GOOS=windows GOARCH=amd64 go build -o /tmp/test-windows-amd64.exe
+          GOOS=windows GOARCH=386 go build -o /tmp/test-windows-386.exe
+          GOOS=windows GOARCH=arm64 go build -o /tmp/test-windows-arm64.exe
+          
+          # Linux
+          GOOS=linux GOARCH=amd64 go build -o /tmp/test-linux-amd64
+          GOOS=linux GOARCH=386 go build -o /tmp/test-linux-386
+          GOOS=linux GOARCH=arm go build -o /tmp/test-linux-arm
+          GOOS=linux GOARCH=arm64 go build -o /tmp/test-linux-arm64
+          
+          # macOS
+          GOOS=darwin GOARCH=amd64 go build -o /tmp/test-darwin-amd64
+          GOOS=darwin GOARCH=arm64 go build -o /tmp/test-darwin-arm64
+          
+          # FreeBSD
+          GOOS=freebsd GOARCH=amd64 go build -o /tmp/test-freebsd-amd64
+          GOOS=freebsd GOARCH=386 go build -o /tmp/test-freebsd-386
+          GOOS=freebsd GOARCH=arm64 go build -o /tmp/test-freebsd-arm64
+          
+          # OpenBSD
+          GOOS=openbsd GOARCH=amd64 go build -o /tmp/test-openbsd-amd64
+          GOOS=openbsd GOARCH=386 go build -o /tmp/test-openbsd-386
+          
+          # NetBSD
+          GOOS=netbsd GOARCH=amd64 go build -o /tmp/test-netbsd-amd64
+          GOOS=netbsd GOARCH=386 go build -o /tmp/test-netbsd-386
+          
+          echo "✅ All cross-compilation tests passed!"
