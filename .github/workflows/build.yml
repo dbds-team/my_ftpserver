@@ -34,6 +34,11 @@ jobs:
       - name: Build
         run: go build -v ./...
 
+      - name: Build for FreeBSD
+        run: |
+          GOOS=freebsd GOARCH=amd64 go build -v ./...
+          GOOS=freebsd GOARCH=arm64 go build -v ./...
+
       - name: Test
         # We need GCC because of the "go test -race"
         # env:

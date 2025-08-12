@@ -5,23 +5,28 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   goreleaser:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
-      -
-        name: Checkout
+      - name: Checkout
         uses: actions/checkout@v4.3.0
         with:
           fetch-depth: 0
-      -
-        name: Set up Go
+
+      - name: Set up Go
         uses: actions/setup-go@v5.5.0
-      -
-        name: Run GoReleaser
+        with:
+          go-version: '1.24.6'
+
+      - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6.3.0
         with:
           version: latest
-          args: release --rm-dist
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
