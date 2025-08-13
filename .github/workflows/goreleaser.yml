@@ -28,7 +28,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          # 使用Go 1.19以兼容FreeBSD 10.3
+          go-version: '1.19'
           cache: true
 
       - name: Install dependencies
@@ -42,9 +43,11 @@ jobs:
         with:
           distribution: goreleaser
           version: latest
-          args: release --clean --verbose
+          args: release --clean --verbose --parallelism=4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 设置并行编译
+          GORELEASER_PARALLELISM: 4
 
       - name: Upload Release Summary
         if: success()
@@ -52,5 +55,7 @@ jobs:
           echo "### ✅ Release completed successfully!" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Released version: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Compiled with Go 1.19 for maximum compatibility**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Check the [releases page](https://github.com/${{ github.repository }}/releases) for binaries." >> $GITHUB_STEP_SUMMARY

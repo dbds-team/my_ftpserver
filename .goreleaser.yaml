@@ -12,6 +12,8 @@ builds:
       - GO111MODULE=on
     main: ./
     binary: my_ftpserver
+    # 并行编译数量设置
+    parallelism: 4
     goos:
       - linux
       - darwin
@@ -48,7 +50,14 @@ builds:
       - -X main.BuildVersion={{.Version}} 
       - -X main.Commit={{.Commit}} 
       - -X main.BuildDate={{.Date}}
-      - -extldflags=-static
+    # 使用更兼容的编译标志
+    flags:
+      - -trimpath
+      - -mod=readonly
+    # 为FreeBSD设置特殊的编译标签
+    tags:
+      - netgo
+      - osusergo
 
 archives:
   - id: default
@@ -123,9 +132,12 @@ release:
     - **Windows**: x86_64 (64-bit), i386 (32-bit), ARM64
     - **Linux**: x86_64 (64-bit), i386 (32-bit), ARM, ARM64
     - **macOS**: x86_64 (Intel), ARM64 (Apple Silicon M1/M2/M3/M4)
-    - **FreeBSD**: x86_64 (64-bit), i386 (32-bit), ARM64
+    - **FreeBSD**: x86_64 (64-bit), i386 (32-bit), ARM64 (Compatible with FreeBSD 10.3+)
     - **OpenBSD**: x86_64 (64-bit), i386 (32-bit), ARM64
     - **NetBSD**: x86_64 (64-bit), i386 (32-bit), ARM64
+    
+    ### ⚠️ Compatibility Note
+    For FreeBSD 10.3 and older systems, please use the binaries compiled with Go 1.19.
     
   footer: |
     ---
@@ -142,3 +154,6 @@ release:
     
     ### 📄 Full Changelog
     **Full Changelog**: https://github.com/dbds-team/my_ftpserver/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+# 全局并行设置
+parallelism: 4
